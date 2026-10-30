@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/* The mosaic panel is always dark (the palettes are designed for it); the page tone is set by the tokens below, not by `dark:` utilities. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens (Swiss / brutalist). The UI is monochrome: ALL color comes from the mosaic.
+ * Everything in the UI reads from here, so the look can be tuned in this one place.
+ *
+ * Two scopes. The PAGE scope (header, form, controls card, Advanced panel) follows the page
+ * background choice: usePageBackground writes --page-bg / --page-ink / --page-ink-dim to <html>
+ * and sets data-tone ("dark" | "light"); the values below are the default (Black). The PANEL scope
+ * (.panel-scope, the mosaic panel: info line, legends, grid, tooltip) is ALWAYS dark with fixed
+ * tokens. Components read --paper / --ink / --ink-dim, which .panel-scope re-points.
+ */
+:root {
+  --page-bg: #0a0a0a;
+  --page-ink: #f2f0e8;
+  --page-ink-dim: #a5a39b;
+
+  /* Fixed panel tokens. --panel-bg must match COLOR_PAGE in src/lib/color.ts (used to dim colors). */
+  --panel-bg: #0a0a0a;
+  --panel-ink: #f2f0e8;
+  --panel-ink-dim: #a5a39b;
+
+  --background: var(--page-bg);
+  --paper: var(--page-bg);
+  --ink: var(--page-ink);
+  --ink-dim: var(--page-ink-dim);
+  --foreground: var(--ink);
+
+  /* Border widths: thick = card, panel and tooltip; thin = buttons, inputs, swatches, cell dividers. */
+  --rule-thick: 3px;
+  --rule-thin: 2px;
+  /* Hard offset shadow of the card and the mosaic panel (page ink). Set to `none` to remove it. */
+  --shadow-hard: 6px 6px 0 var(--ink);
+  /* Square slider thumb. */
+  --thumb-size: 14px;
+  /* Outline offset of focus rings. */
+  --focus-offset: 2px;
+
+  color-scheme: dark;
+}
+
+:root[data-tone="light"] {
+  color-scheme: light;
+}
+
+/* The mosaic panel: always dark, whatever the page is. */
+.panel-scope {
+  --paper: var(--panel-bg);
+  --ink: var(--panel-ink);
+  --ink-dim: var(--panel-ink-dim);
+  background: var(--panel-bg);
+  color: var(--panel-ink);
+  color-scheme: dark;
+}
+
+/* The page color also paints html and body, so overscroll never flashes another color. */
+html,
+body {
+  background: var(--page-bg);
+}
+
+/* Keeps the width stable when the vertical scrollbar appears, so the mosaic's grid doesn't flip-flop. */
+html {
+  scrollbar-gutter: stable;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Border widths and shadow as utilities that read the tokens above (always in the ink color). */
+@utility rule-thick {
+  border-width: var(--rule-thick);
+  border-color: var(--ink);
+}
+@utility rule-thin {
+  border-width: var(--rule-thin);
+  border-color: var(--ink);
+}
+@utility rule-t {
+  border-top-width: var(--rule-thin);
+  border-color: var(--ink);
+}
+@utility rule-l {
+  border-left-width: var(--rule-thin);
+  border-color: var(--ink);
+}
+@utility rule-r {
+  border-right-width: var(--rule-thin);
+  border-color: var(--ink);
+}
+@utility rule-b {
+  border-bottom-width: var(--rule-thin);
+  border-color: var(--ink);
+}
+@utility rule-thick-b {
+  border-bottom-width: var(--rule-thick);
+  border-color: var(--ink);
+}
+/* Pulls the right and bottom cell borders of a grid under the card's own border, so they don't double up. */
+@utility bleed-rb {
+  margin-right: calc(var(--rule-thin) * -1);
+  margin-bottom: calc(var(--rule-thin) * -1);
+}
+@utility shadow-hard {
+  box-shadow: var(--shadow-hard);
+}
+/* Small uppercase labels. */
+@utility ui-label {
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Tiny labels above controls. */
+@utility ui-label-sm {
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@layer base {
+  /* No rounded corners anywhere. */
+  *,
+  ::before,
+  ::after {
+    border-radius: 0;
+  }
+
+  body {
+    color: var(--foreground);
+    font-family: var(--font-sans), sans-serif;
+  }
+
+  ::selection {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  :focus-visible {
+    outline: var(--rule-thin) solid var(--ink);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* Range inputs: 2px ink track, square ink thumb (WebKit and Firefox). */
+  input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    height: var(--thumb-size);
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: var(--rule-thin);
+    background: var(--ink);
+    border: 0;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    margin-top: calc((var(--rule-thin) - var(--thumb-size)) / 2);
+    background: var(--ink);
+    border: 0;
+    border-radius: 0;
+  }
+  input[type="range"]::-moz-range-track {
+    height: var(--rule-thin);
+    background: var(--ink);
+    border: 0;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background: var(--ink);
+    border: 0;
+    border-radius: 0;
+  }
+}
