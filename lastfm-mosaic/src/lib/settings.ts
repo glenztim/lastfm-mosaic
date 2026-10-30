@@ -43,17 +43,48 @@ export const GRANULARITY_UNIT: Record<Granularity, string> = {
   months: "month",
 };
 
-/** Page background (header, form, controls, Advanced panel). The mosaic panel is always dark. */
-export type PageBackground = "black" | "paper" | "scheme-dark" | "scheme-light" | "custom";
-export const PAGE_BACKGROUNDS: readonly PageBackground[] = [
+/**
+ * Themes: "outside" is the page background (header, form), "inside" the fill of every card
+ * (controls, Advanced, mosaic panel, tooltip). See `src/lib/theme.ts`.
+ */
+export type ThemeId =
+  | "black"
+  | "white"
+  | "dark-on-white"
+  | "light-on-black"
+  | "scheme-dark"
+  | "scheme-light"
+  | "custom";
+export const THEME_IDS: readonly ThemeId[] = [
   "black",
-  "paper",
+  "white",
+  "dark-on-white",
+  "light-on-black",
   "scheme-dark",
   "scheme-light",
   "custom",
 ];
-export const DEFAULT_PAGE_BACKGROUND: PageBackground = "black";
-export const DEFAULT_CUSTOM_BACKGROUND = "#1d2433";
+export const DEFAULT_THEME: ThemeId = "black";
+/** The Custom theme starts as black outside, charcoal inside. */
+export const DEFAULT_CUSTOM_OUTSIDE = "#0a0a0a";
+export const DEFAULT_CUSTOM_INSIDE = "#1c1c1c";
+
+/**
+ * Narrow screens: the mosaic panel's measured inner width is below this (px). Then "Zoom" is
+ * relabeled "Detail" and the "Per row" control appears.
+ */
+export const NARROW_PANEL_PX = 640;
+
+/** "Per row" is stored as an index so it survives granularity changes. */
+export type PerRowIndex = 0 | 1 | 2;
+export const PER_ROW_INDEXES: readonly PerRowIndex[] = [0, 1, 2];
+export const DEFAULT_PER_ROW: PerRowIndex = 0;
+/** Columns of index 1 and 2 (index 0 keeps the calendar layout); days and weeks 7 / 4 / 2, months 12 / 6 / 3. */
+export const PER_ROW_COLUMNS: Record<Granularity, readonly [number, number, number]> = {
+  days: [7, 4, 2],
+  weeks: [7, 4, 2],
+  months: [12, 6, 3],
+};
 
 /** The Advanced panel (pool, size variation, color tuning, custom page color) is open or closed. */
 export type AdvancedState = "open" | "closed";

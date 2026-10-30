@@ -9,12 +9,15 @@ import { Timeline } from "@/components/Timeline";
 import { TopArtists } from "@/components/TopArtists";
 import { UsernameForm, type FormValues } from "@/components/UsernameForm";
 import { useColorSettings } from "@/hooks/useColorSettings";
-import { usePageBackground } from "@/hooks/usePageBackground";
+import { useContainerWidth } from "@/hooks/useContainerWidth";
+import { useTheme } from "@/hooks/useTheme";
 import { usePersistedNumber } from "@/hooks/usePersistedNumber";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { makeColoring, makeRanking } from "@/lib/artistColors";
 import { extendPalette } from "@/lib/color";
+import { displayGradient, displayPalette } from "@/lib/displayColors";
 import { fetchAllScrobbles } from "@/lib/fetchScrobbles";
+import { isNarrow, layoutFor } from "@/lib/gridLayout";
 import { clearSession, loadSession, saveSession } from "@/lib/session";
 import {
   ADVANCED_STATES,
@@ -22,6 +25,7 @@ import {
   DEFAULT_GRANULARITY,
   DEFAULT_NESTING,
   DEFAULT_OUTSIDE_POOL,
+  DEFAULT_PER_ROW,
   DEFAULT_POOL,
   DEFAULT_TOP_N,
   DEFAULT_VIEW,
@@ -29,11 +33,13 @@ import {
   LEGEND_ARTISTS,
   NESTINGS,
   OUTSIDE_POOL_OPTIONS,
+  PER_ROW_INDEXES,
   POOL_OPTIONS,
   SIZE_VARIATION,
   TOP_N_OPTIONS,
   VIEWS,
   poolLimit,
+  type ThemeId,
 } from "@/lib/settings";
 import { scrobbleStore, type CacheMeta, type CachedScrobbles } from "@/lib/storage";
 import {
@@ -42,10 +48,11 @@ import {
   filterFrom,
   fromTimestamp,
 } from "@/lib/timeframe";
+import { cardLook, accentOf } from "@/lib/theme";
 import { rankedArtists } from "@/lib/topArtists";
 import type { Scrobble } from "@/lib/types";
 import { artistColorsVisible } from "@/lib/visibility";
-import { DEFAULT_ZOOM, ZOOM_ORDER } from "@/lib/zoom";
+import { DEFAULT_ZOOM, ZOOM_LEVELS, ZOOM_ORDER } from "@/lib/zoom";
 
 interface Result {
   user: string;
@@ -94,6 +101,7 @@ export default function Home() {
     SIZE_VARIATION.fallback,
   );
 
+  const [perRow, setPerRow] = usePersistedState("perRow", PER_ROW_INDEXES, DEFAULT_PER_ROW);
   const [advanced, setAdvanced] = usePersistedState("advanced", ADVANCED_STATES, DEFAULT_ADVANCED);
   const [pool, setPool] = usePersistedState("pool", POOL_OPTIONS, DEFAULT_POOL);
   const [outside, setOutside] = usePersistedState(
@@ -103,24 +111,58 @@ export default function Home() {
   );
 
   // Gradient and artist colors are two independent choices (see `useColorSettings`). Artists are
-  // ranked once per loaded range; the coloring is rebuilt only when the palette, pool or
-  // skip/grey change. While a slider is dragged the swatches and legends follow immediately, but
+  // ranked once per loaded range; the coloring is rebuilt only when the palette, pool, skip/grey
+  // or theme change. While a slider is dragged the swatches and legends follow immediately, but
   // the mosaic (thousands of nested squares) gets the deferred colors, so dragging stays smooth.
   const colorSettings = useColorSettings();
-  const { gradient, paletteColors } = colorSettings;
-  // The page background's "scheme" options take their hue and chroma from the color that is most
-  // visible: the top artist's color when artist colors show, otherwise the gradient's top stop.
-  const accent = artistColorsVisible({ view, nesting, zoom })
-    ? (paletteColors[0] ?? gradient.stops[gradient.stops.length - 1])
-    : gradient.stops[gradient.stops.length - 1];
-  const page = usePageBackground(accent);
+  const { gradient: tunedGradient, paletteColors: tunedPalette } = colorSettings;
+
+  // The scheme themes take their hue and chroma from the most chromatic of the colors that are
+  // most visible: the first 4 palette colors when artist colors show, otherwise the gradient stops.
+  // Deferred, so dragging a color slider doesn't recompute the whole UI's theme on every tick.
+  const accent = accentOf(
+    artistColorsVisible({ view, nesting, zoom }) ? tunedPalette.slice(0, 4) : tunedGradient.stops,
+  );
+  const deferredAccent = useDeferredValue(accent);
+  const themeSettings = useTheme(deferredAccent);
+  // Opening the Advanced panel when Custom is chosen: that is where its two colors are set.
+  const { onId: onThemeId } = themeSettings;
+  const theme = useMemo(
+    () => ({
+      ...themeSettings,
+      onId: (id: ThemeId) => {
+        onThemeId(id);
+        if (id === "custom") setAdvanced("open");
+      },
+    }),
+    [themeSettings, onThemeId, setAdvanced],
+  );
+
+  // What the card inside implies for the mosaic, and the colors adapted to it (reversed gradient on
+  // a light inside, zero color, contrast guard).
+  const insideColor = themeSettings.card.bg;
+  const look = useMemo(() => cardLook(insideColor), [insideColor]);
+  const gradient = useMemo(() => displayGradient(tunedGradient.stops, look), [tunedGradient, look]);
+  const { matchGradient, paletteTune } = colorSettings;
+  const paletteColors = useMemo(
+    () =>
+      displayPalette({
+        colors: tunedPalette,
+        matchGradient,
+        tunedStops: tunedGradient.stops,
+        tune: paletteTune,
+        look,
+      }),
+    [tunedPalette, matchGradient, tunedGradient, paletteTune, look],
+  );
+
   const deferredGradient = useDeferredValue(gradient);
   const deferredPaletteColors = useDeferredValue(paletteColors);
   const scrobbles = result?.scrobbles;
   const ranking = useMemo(() => makeRanking(scrobbles ? rankedArtists(scrobbles) : []), [scrobbles]);
   const coloring = useMemo(
-    () => makeColoring(ranking, deferredPaletteColors, poolLimit(pool), outside),
-    [ranking, deferredPaletteColors, pool, outside],
+    () => makeColoring(ranking, deferredPaletteColors, poolLimit(pool), outside, look),
+    [ranking, deferredPaletteColors, pool, outside, look],
   );
   const legendColors = useMemo(
     () => extendPalette(paletteColors, LEGEND_ARTISTS),
@@ -131,9 +173,17 @@ export default function Home() {
       gradient: deferredGradient,
       coloring,
       legend: { gradient, artistColors: legendColors },
+      look,
     }),
-    [deferredGradient, coloring, gradient, legendColors],
+    [deferredGradient, coloring, gradient, legendColors, look],
   );
+
+  // The mosaic panel's inner width decides "narrow" (below 640 px): a measured width, not a media
+  // query. It is measured here, one level above the controls and the grid that both need it.
+  const [panelRef, panelWidth] = useContainerWidth<HTMLDivElement>();
+  const narrow = isNarrow(panelWidth);
+  const { size: nominalSize, gap: nominalGap } = ZOOM_LEVELS[zoom];
+  const autoColumns = layoutFor(panelWidth, nominalSize, nominalGap, granularity, 0).columns;
 
   // Restore the last session: prefill the form and, if IndexedDB has that user's scrobbles for
   // the time frame, show the mosaic straight away. Never touches the network.
@@ -284,9 +334,13 @@ export default function Home() {
               topN={topN}
               onTopN={setTopN}
               colors={colorSettings}
-              page={page}
+              theme={theme}
               advancedOpen={advanced === "open"}
               onAdvanced={() => setAdvanced(advanced === "open" ? "closed" : "open")}
+              narrow={narrow}
+              perRow={perRow}
+              onPerRow={setPerRow}
+              autoColumns={autoColumns}
             />
             {/*
               From 1100px the Advanced panel is docked beside the mosaic (sticky, so the mosaic
@@ -308,20 +362,20 @@ export default function Home() {
                     variation={variation}
                     onVariation={setVariation}
                     colors={colorSettings}
-                    page={page}
+                    theme={theme}
                   />
                 </div>
               )}
-              {/* The frame uses the page ink; inside, the panel is always dark. */}
+              {/* The frame (border, shadow) uses the page ink; the inside is the card scope. */}
               <section aria-label="Mosaic" className="rule-thick shadow-hard min-w-0 flex-1">
-                <div className="panel-scope">
+                <div className="card-scope">
                   <p className="rule-b px-3 py-2 text-sm tabular-nums">
                     <span className="font-bold">{result.user}</span>:{" "}
                     {result.scrobbles.length.toLocaleString()} scrobbles,{" "}
                     {result.source === "cache" ? "from cache, " : ""}fetched{" "}
                     {dateFmt.format(result.fetchedAt)}
                   </p>
-                  <div className="p-3">
+                  <div ref={panelRef} className="p-3">
                     {view === "timeline" ? (
                       <Timeline
                         scrobbles={result.scrobbles}
@@ -331,6 +385,8 @@ export default function Home() {
                         variation={variation}
                         from={result.from}
                         now={result.now}
+                        width={panelWidth}
+                        perRow={perRow}
                       />
                     ) : (
                       <TopArtists scrobbles={result.scrobbles} topN={topN} />

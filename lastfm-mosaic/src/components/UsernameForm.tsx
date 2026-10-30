@@ -19,7 +19,7 @@ interface Props {
 }
 
 const field = "rule-thin h-9 bg-paper px-3 text-sm text-ink";
-const button = "rule-thin h-9 whitespace-nowrap px-4 text-sm font-medium disabled:opacity-50";
+const button = "rule-thin h-9 whitespace-nowrap px-4 text-sm font-medium disabled:border-ink-dim disabled:text-ink-dim";
 
 export function UsernameForm({ values, onChange, disabled, onSubmit, onClearCache }: Props) {
   const { user, timeFrame } = values;
@@ -56,7 +56,7 @@ export function UsernameForm({ values, onChange, disabled, onSubmit, onClearCach
       <button
         type="submit"
         disabled={disabled}
-        className={`${button} bg-ink text-paper enabled:hover:bg-paper enabled:hover:text-ink`}
+        className={`${button} bg-ink text-paper enabled:hover:bg-paper enabled:hover:text-ink disabled:bg-ink-dim disabled:text-paper`}
       >
         Show mosaic
       </button>

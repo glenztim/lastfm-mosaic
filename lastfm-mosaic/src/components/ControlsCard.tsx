@@ -1,26 +1,28 @@
 import type { ReactNode } from "react";
 import {
   GradientPicker,
-  PageBackgroundPicker,
-  PAGE_BACKGROUND_LABELS,
   PalettePicker,
+  ThemePicker,
   selectedGradientName,
   selectedPaletteName,
 } from "@/components/Pickers";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import type { ColorSettings } from "@/hooks/useColorSettings";
-import type { PageBackgroundSettings } from "@/hooks/usePageBackground";
+import type { ThemeSettings } from "@/hooks/useTheme";
 import {
   GRANULARITIES,
   NESTINGS,
+  PER_ROW_COLUMNS,
+  PER_ROW_INDEXES,
   TOP_N_OPTIONS,
   VIEWS,
   type Nesting,
+  type PerRowIndex,
   type View,
 } from "@/lib/settings";
 import type { Granularity } from "@/lib/types";
 import { artistSectionVisible, gradientSectionVisible } from "@/lib/visibility";
-import { ZOOM_ORDER, type ZoomLevel } from "@/lib/zoom";
+import { ARTIST_LAYER_SCALES, ZOOM_ORDER, type ZoomLevel } from "@/lib/zoom";
 
 const VIEW_LABELS: Record<View, string> = { timeline: "Timeline", artists: "Top artists" };
 const GRANULARITY_LABELS: Record<Granularity, string> = {
@@ -51,9 +53,15 @@ interface Props {
   topN: number;
   onTopN: (topN: number) => void;
   colors: ColorSettings;
-  page: PageBackgroundSettings;
+  theme: ThemeSettings;
   advancedOpen: boolean;
   onAdvanced: () => void;
+  /** The mosaic panel is narrower than 640 px: "Zoom" becomes "Detail" and "Per row" appears. */
+  narrow: boolean;
+  perRow: PerRowIndex;
+  onPerRow: (perRow: PerRowIndex) => void;
+  /** Columns the calendar layout (Per row index 0) uses at the current width. */
+  autoColumns: number;
 }
 
 /** A cell: tiny uppercase label (plus the selected preset's name) above its control. */
@@ -87,9 +95,11 @@ const Filler = () => <div className="rule-b min-w-0 grow" aria-hidden />;
 
 /**
  * The compact controls card: two rows of cells with tiny labels. Row 1 is the display settings,
- * row 2 the pickers (artist colors, volume gradient, page background) and the Advanced toggle.
- * Only what applies to the current display is rendered (see `src/lib/visibility.ts`). Nothing
- * here fetches or reads the cache: it all works on loaded data.
+ * row 2 the pickers (artist colors, volume gradient, theme) and the Advanced toggle. Only what
+ * applies to the current display is rendered (see `src/lib/visibility.ts`). Nothing here fetches
+ * or reads the cache: it all works on loaded data.
+ *
+ * The frame (thick border, offset shadow) is in the page ink; everything inside is `.card-scope`.
  */
 export function ControlsCard(p: Props) {
   const timeline = p.view === "timeline";
@@ -97,83 +107,116 @@ export function ControlsCard(p: Props) {
   const showGradient = gradientSectionVisible(state, p.colors.matchGradient);
   const showArtists = artistSectionVisible(state);
 
+  const perRowColumns = PER_ROW_COLUMNS[p.granularity];
+  // Index 0 is the calendar layout, whose column count depends on the width: label it truthfully.
+  const perRowOptions = PER_ROW_INDEXES.map((i) => ({
+    value: i,
+    label: String(i === 0 ? p.autoColumns : perRowColumns[i]),
+  }));
+  const showHint =
+    p.narrow && timeline && p.perRow === 0 && ARTIST_LAYER_SCALES[p.zoom].length > 0;
+
   return (
-    <section aria-label="Controls" className="rule-thick shadow-hard overflow-hidden bg-paper">
-      {/* The cells' right and bottom rules run under the card's own border. */}
-      <div className="bleed-rb">
-        <div className="flex flex-wrap">
-          <Cell label="View">
-            <SegmentedControl label="View" options={VIEW_OPTIONS} value={p.view} onChange={p.onView} />
-          </Cell>
-          {timeline && (
-            <>
-              <Cell label="Granularity">
-                <SegmentedControl
-                  label="Granularity"
-                  options={GRANULARITY_OPTIONS}
-                  value={p.granularity}
-                  onChange={p.onGranularity}
-                />
-              </Cell>
-              <Cell label="Zoom">
-                <SegmentedControl
-                  label="Zoom"
-                  options={ZOOM_OPTIONS}
-                  value={p.zoom}
-                  onChange={p.onZoom}
-                />
-              </Cell>
-              <Cell label="Nesting">
-                <SegmentedControl
-                  label="Nesting"
-                  options={NESTING_OPTIONS}
-                  value={p.nesting}
-                  onChange={p.onNesting}
-                />
-              </Cell>
-            </>
-          )}
-          {!timeline && (
-            <Cell label="Top artists">
+    <section aria-label="Controls" className="rule-thick shadow-hard">
+      <div className="card-scope overflow-hidden">
+        {/* The cells' right and bottom rules run under the card's own border. */}
+        <div className="bleed-rb">
+          <div className="flex flex-wrap">
+            <Cell label="View">
               <SegmentedControl
-                label="Number of artists"
-                options={TOP_N_CHOICES}
-                value={p.topN}
-                onChange={p.onTopN}
+                label="View"
+                options={VIEW_OPTIONS}
+                value={p.view}
+                onChange={p.onView}
               />
             </Cell>
-          )}
-          <Filler />
-        </div>
-
-        <div className="flex flex-wrap">
-          {showArtists && (
-            <Cell label="Artist colors" selected={selectedPaletteName(p.colors)}>
-              <PalettePicker settings={p.colors} />
-            </Cell>
-          )}
-          {showGradient && (
-            <Cell label="Volume gradient" selected={selectedGradientName(p.colors)}>
-              <GradientPicker settings={p.colors} />
-            </Cell>
-          )}
-          <Cell label="Page background" selected={PAGE_BACKGROUND_LABELS[p.page.choice]}>
-            <PageBackgroundPicker page={p.page} />
-          </Cell>
-          <Filler />
-          <div className="rule-l rule-b flex items-center px-2.5 py-2">
-            <button
-              type="button"
-              aria-expanded={p.advancedOpen}
-              aria-controls="advanced-panel"
-              onClick={p.onAdvanced}
-              className={`rule-thin h-7 px-3 text-[13px] font-medium ${
-                p.advancedOpen ? "bg-ink text-paper" : "hover:bg-ink hover:text-paper"
-              }`}
-            >
-              Advanced
-            </button>
+            {timeline && (
+              <>
+                <Cell label="Granularity">
+                  <SegmentedControl
+                    label="Granularity"
+                    options={GRANULARITY_OPTIONS}
+                    value={p.granularity}
+                    onChange={p.onGranularity}
+                  />
+                </Cell>
+                <Cell label={p.narrow ? "Detail" : "Zoom"}>
+                  <SegmentedControl
+                    label={p.narrow ? "Detail" : "Zoom"}
+                    options={ZOOM_OPTIONS}
+                    value={p.zoom}
+                    onChange={p.onZoom}
+                  />
+                </Cell>
+                {p.narrow && (
+                  <Cell label="Per row">
+                    <SegmentedControl<PerRowIndex>
+                      label="Per row"
+                      options={perRowOptions}
+                      value={p.perRow}
+                      onChange={p.onPerRow}
+                    />
+                  </Cell>
+                )}
+                <Cell label="Nesting">
+                  <SegmentedControl
+                    label="Nesting"
+                    options={NESTING_OPTIONS}
+                    value={p.nesting}
+                    onChange={p.onNesting}
+                  />
+                </Cell>
+              </>
+            )}
+            {!timeline && (
+              <Cell label="Top artists">
+                <SegmentedControl
+                  label="Number of artists"
+                  options={TOP_N_CHOICES}
+                  value={p.topN}
+                  onChange={p.onTopN}
+                />
+              </Cell>
+            )}
+            <Filler />
           </div>
+
+          <div className="flex flex-wrap">
+            {showArtists && (
+              <Cell label="Artist colors" selected={selectedPaletteName(p.colors)}>
+                <PalettePicker settings={p.colors} />
+              </Cell>
+            )}
+            {showGradient && (
+              <Cell label="Volume gradient" selected={selectedGradientName(p.colors)}>
+                <GradientPicker settings={p.colors} />
+              </Cell>
+            )}
+            <Cell label="Theme" selected={p.theme.theme.name}>
+              <ThemePicker theme={p.theme} />
+            </Cell>
+            <Filler />
+            <div className="rule-l rule-b flex items-center px-2.5 py-2">
+              <button
+                type="button"
+                aria-expanded={p.advancedOpen}
+                aria-controls="advanced-panel"
+                onClick={p.onAdvanced}
+                className={`rule-thin h-7 px-3 text-[13px] font-medium ${
+                  p.advancedOpen ? "bg-ink text-paper" : "hover:bg-ink hover:text-paper"
+                }`}
+              >
+                Advanced
+              </button>
+            </div>
+          </div>
+
+          {showHint && (
+            <p className="rule-b px-2.5 py-1.5 text-xs text-ink-dim">
+              Squares are tiny at {p.autoColumns} per row. Try {perRowColumns[1]} per row for
+              bigger ones.
+            </p>
+          )}
         </div>
       </div>
     </section>

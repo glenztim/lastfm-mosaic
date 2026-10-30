@@ -1,4 +1,5 @@
 import { addDays } from "./aggregate";
+import { NARROW_PANEL_PX, PER_ROW_COLUMNS, type PerRowIndex } from "./settings";
 import type { Bucket, Granularity } from "./types";
 
 /** Month layout: one row per year. */
@@ -123,4 +124,58 @@ export function yearLabels(
       const last = years[years.length - 1];
       return { row, text: years.length > 1 ? `${first}–${String(last).slice(-2)}` : String(first) };
     });
+}
+
+// --- layouts ------------------------------------------------------------------------------------
+
+/** Fixed width of the calendar layout's year gutter on the left, and the space between it and the grid. */
+export const GUTTER_PX = 48;
+export const GUTTER_GAP_PX = 8;
+
+/** The panel's inner width is below this: "narrow" (a measured width, not a media query). */
+export const isNarrow = (panelWidth: number) => panelWidth > 0 && panelWidth < NARROW_PANEL_PX;
+
+export type MosaicLayout =
+  /** Calendar-aligned grid with the year gutter (`fitGrid`): today's layout. */
+  | ({ mode: "calendar" } & GridFit)
+  /** Chronological flow in year segments with a heading each; no weekday alignment, no gutter. */
+  | { mode: "flow"; columns: number; size: number };
+
+/**
+ * The layout for a measured panel width. Wide panels always use the calendar layout. On narrow
+ * ones "Per row" index 0 keeps it; index 1 and 2 flow the buckets in 4 / 2 columns (days, weeks) or
+ * 6 / 3 (months), squares filling the width: size = (width - (columns - 1) * gap) / columns.
+ */
+export function layoutFor(
+  panelWidth: number,
+  nominal: number,
+  gap: number,
+  granularity: Granularity,
+  perRow: PerRowIndex,
+): MosaicLayout {
+  if (!isNarrow(panelWidth) || perRow === 0) {
+    const available = Math.max(0, panelWidth - GUTTER_PX - GUTTER_GAP_PX);
+    return { mode: "calendar", ...fitGrid(available, nominal, gap, granularity) };
+  }
+  const columns = PER_ROW_COLUMNS[granularity][perRow];
+  return { mode: "flow", columns, size: Math.max(MIN_SIZE, (panelWidth - (columns - 1) * gap) / columns) };
+}
+
+export interface YearSegment {
+  year: number;
+  /** Index of the segment's first bucket, and how many buckets it holds. */
+  start: number;
+  count: number;
+}
+
+/** Buckets (in order) grouped by the year they start in: the segments of the flow layout. */
+export function groupByYear(buckets: Bucket[]): YearSegment[] {
+  const segments: YearSegment[] = [];
+  buckets.forEach((b, i) => {
+    const year = b.start.getFullYear();
+    const last = segments[segments.length - 1];
+    if (last && last.year === year) last.count++;
+    else segments.push({ year, start: i, count: 1 });
+  });
+  return segments;
 }

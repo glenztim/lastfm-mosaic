@@ -69,7 +69,7 @@ export function TuneSliders({ tune, onChange, onReset }: Props) {
         type="button"
         onClick={onReset}
         disabled={isNoTune(tune)}
-        className="ui-label-sm rule-thin h-7 w-fit px-3 enabled:hover:bg-ink enabled:hover:text-paper disabled:opacity-50"
+        className="ui-label-sm rule-thin h-7 w-fit px-3 enabled:hover:bg-ink enabled:hover:text-paper disabled:border-ink-dim disabled:text-ink-dim"
       >
         Reset
       </button>

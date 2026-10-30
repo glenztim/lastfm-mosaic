@@ -1,62 +1,69 @@
 @import "tailwindcss";
 
-/* The mosaic panel is always dark (the palettes are designed for it); the page tone is set by the tokens below, not by `dark:` utilities. */
+/* Light or dark is set by the theme tokens below (page and card scope), not by `dark:` utilities. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
  * Design tokens (Swiss / brutalist). The UI is monochrome: ALL color comes from the mosaic.
  * Everything in the UI reads from here, so the look can be tuned in this one place.
  *
- * Two scopes. The PAGE scope (header, form, controls card, Advanced panel) follows the page
- * background choice: usePageBackground writes --page-bg / --page-ink / --page-ink-dim to <html>
- * and sets data-tone ("dark" | "light"); the values below are the default (Black). The PANEL scope
- * (.panel-scope, the mosaic panel: info line, legends, grid, tooltip) is ALWAYS dark with fixed
- * tokens. Components read --paper / --ink / --ink-dim, which .panel-scope re-points.
+ * Two scopes, both set at runtime from the chosen theme (useTheme writes the --page-* and --card-*
+ * variables to <html>, plus data-page-tone / data-card-tone = "dark" | "light"; the values below
+ * are the default theme, Black):
+ *  - PAGE scope: the outside color (header, user form, html/body) and its ink. Also the thick
+ *    borders and hard offset shadows of the cards, which frame a card against the outside.
+ *  - CARD scope (.card-scope): the inside color and its ink, for everything inside a card: labels,
+ *    text, inputs, segmented controls, swatch outlines, sliders, legends, the grid, the tooltip.
+ * Components never know their scope: they read the generic --paper / --ink / --ink-dim tokens, and
+ * .card-scope re-points those to the card values.
  */
 :root {
   --page-bg: #0a0a0a;
   --page-ink: #f2f0e8;
-  --page-ink-dim: #a5a39b;
+  --page-muted: #6e6d68;
+  --card-bg: #0a0a0a;
+  --card-ink: #f2f0e8;
+  --card-muted: #6e6d68;
 
-  /* Fixed panel tokens. --panel-bg must match COLOR_PAGE in src/lib/color.ts (used to dim colors). */
-  --panel-bg: #0a0a0a;
-  --panel-ink: #f2f0e8;
-  --panel-ink-dim: #a5a39b;
-
-  --background: var(--page-bg);
+  /* Generic tokens: the page scope by default. */
   --paper: var(--page-bg);
   --ink: var(--page-ink);
-  --ink-dim: var(--page-ink-dim);
+  --ink-dim: var(--page-muted);
   --foreground: var(--ink);
 
-  /* Border widths: thick = card, panel and tooltip; thin = buttons, inputs, swatches, cell dividers. */
+  /* Border widths: thick = card, tooltip; thin = buttons, inputs, swatches, cell dividers. */
   --rule-thick: 3px;
   --rule-thin: 2px;
-  /* Hard offset shadow of the card and the mosaic panel (page ink). Set to `none` to remove it. */
+  /* Hard offset shadow of the cards (page ink, it frames the card). Set to `none` to remove it. */
   --shadow-hard: 6px 6px 0 var(--ink);
   /* Square slider thumb. */
   --thumb-size: 14px;
   /* Outline offset of focus rings. */
   --focus-offset: 2px;
 
+  /* Native controls (select, color input, scrollbars) match the scope they are in. */
   color-scheme: dark;
 }
 
-:root[data-tone="light"] {
+:root[data-page-tone="light"] {
   color-scheme: light;
 }
 
-/* The mosaic panel: always dark, whatever the page is. */
-.panel-scope {
-  --paper: var(--panel-bg);
-  --ink: var(--panel-ink);
-  --ink-dim: var(--panel-ink-dim);
-  background: var(--panel-bg);
-  color: var(--panel-ink);
+/* The inside of a card. */
+.card-scope {
+  --paper: var(--card-bg);
+  --ink: var(--card-ink);
+  --ink-dim: var(--card-muted);
+  background: var(--card-bg);
+  color: var(--card-ink);
   color-scheme: dark;
 }
 
-/* The page color also paints html and body, so overscroll never flashes another color. */
+:root[data-card-tone="light"] .card-scope {
+  color-scheme: light;
+}
+
+/* The outside color also paints html and body, so overscroll never flashes another color. */
 html,
 body {
   background: var(--page-bg);
@@ -191,3 +198,4 @@ html {
     border-radius: 0;
   }
 }
+

@@ -8,7 +8,7 @@ import { Mosaic } from "@/components/Mosaic";
 import { aggregate, displayRange } from "@/lib/aggregate";
 import { filterBucketsToPool } from "@/lib/artistColors";
 import { makeColorScale } from "@/lib/scale";
-import { GRANULARITY_UNIT, type Nesting } from "@/lib/settings";
+import { GRANULARITY_UNIT, type Nesting, type PerRowIndex } from "@/lib/settings";
 import { topArtistsByBucket } from "@/lib/topArtists";
 import type { Granularity, Scrobble } from "@/lib/types";
 import { artistColorsVisible, volumeVisible } from "@/lib/visibility";
@@ -25,13 +25,26 @@ interface Props {
   /** Start of the requested time frame (Unix seconds), undefined = entire history. */
   from: number | undefined;
   now: Date;
+  /** The mosaic panel's measured inner width, and the narrow-screen "Per row" choice. */
+  width: number;
+  perRow: PerRowIndex;
 }
 
 /**
  * Everything derived from the in-memory scrobbles is memoized: buckets on granularity, the
  * artists per bucket on granularity, the pool-filtered artists on (pool, skip/grey) as well.
  */
-export function Timeline({ scrobbles, granularity, zoom, nesting, variation, from, now }: Props) {
+export function Timeline({
+  scrobbles,
+  granularity,
+  zoom,
+  nesting,
+  variation,
+  from,
+  now,
+  width,
+  perRow,
+}: Props) {
   const { gradient, coloring } = useColors();
   const { ranking, poolCount, skipOutside } = coloring;
   // Artists are needed wherever artist colors are visible ("Artists only" at every zoom, since
@@ -85,6 +98,8 @@ export function Timeline({ scrobbles, granularity, zoom, nesting, variation, fro
         variation={variation}
         topByBucket={topByBucket}
         drawnByBucket={drawnByBucket}
+        width={width}
+        perRow={perRow}
       />
     </div>
   );

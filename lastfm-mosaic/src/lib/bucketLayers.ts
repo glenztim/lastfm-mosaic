@@ -1,5 +1,4 @@
 import { ringColors, type ArtistColoring } from "./artistColors";
-import { oklchToHex } from "./color";
 import { ringScales } from "./nestedSquares";
 import type { Nesting } from "./settings";
 import type { ArtistCount } from "./types";
@@ -12,9 +11,6 @@ export interface BucketLayer {
   /** Drawn as an empty square: page-colored fill with an inset border in `color`. */
   hollow?: boolean;
 }
-
-/** Border of the hollow square: a mid-dark neutral, between the page and the grey rings. */
-export const HOLLOW_BORDER = oklchToHex(0.38, 0, 0);
 
 interface Options {
   coloring: ArtistColoring;
@@ -55,7 +51,7 @@ export function bucketLayers({
   const flat: BucketLayer[] = [{ color: countColor, scale: 1 }];
   if (count <= 0 || !top) return flat;
   if (top.length === 0) {
-    return nesting === "artists" ? [{ color: HOLLOW_BORDER, scale: 1, hollow: true }] : flat;
+    return nesting === "artists" ? [{ color: coloring.look.hollowBorder, scale: 1, hollow: true }] : flat;
   }
 
   if (nesting === "volume") {

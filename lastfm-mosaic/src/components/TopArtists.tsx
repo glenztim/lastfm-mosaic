@@ -44,7 +44,7 @@ export function TopArtists({ scrobbles, topN }: Props) {
   const scales = useMemo(() => proportionalRingScales(artists.map((a) => a.count)), [artists]);
 
   const layers: NestedLayer[] = artists.map((_, i) => ({
-    color: hover && hover.index !== i ? dimColor(colors[i], DIM) : colors[i],
+    color: hover && hover.index !== i ? dimColor(colors[i], DIM, coloring.look.inside) : colors[i],
     scale: scales[i],
   }));
 

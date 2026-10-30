@@ -12,9 +12,6 @@ export interface Oklab {
   b: number;
 }
 
-/** Page background (must match `--background` in globals.css); used to dim colors. */
-export const COLOR_PAGE: Rgb = [10, 10, 10];
-
 export function parseHex(hex: string): Rgb {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as unknown as Rgb;
 }

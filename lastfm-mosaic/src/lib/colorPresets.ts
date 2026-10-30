@@ -7,7 +7,7 @@ export type GradientStops =
   | readonly [string, string, string, string];
 
 /**
- * The count gradient and the zero color. Sequential: perceived lightness must increase
+ * The count gradient. Sequential: perceived lightness must increase
  * monotonically along the stops (dark = few, bright = many); hue is decoration.
  */
 export interface GradientPreset {
@@ -15,14 +15,20 @@ export interface GradientPreset {
   name: string;
   /** Interpolated in OKLab (`gradientColor`). */
   stops: GradientStops;
-  /** Squares with zero scrobbles: a very dark neutral just above the page background. */
-  zero: string;
 }
 
-/** The gradient actually in use: a preset after the tune sliders. */
+/**
+ * The gradient actually in use: a preset after the tune sliders, oriented for the card inside
+ * (reversed on a light inside). `zero` is derived from the inside (`cardLook`), not from the preset.
+ */
 export interface ActiveGradient {
   stops: readonly string[];
   zero: string;
+}
+
+/** A preset after the tune sliders, before orientation. */
+export interface TunedGradient {
+  stops: readonly string[];
 }
 
 /** Categorical colors for artists, assigned by rank: the top artist gets `colors[0]`, and so on. */
@@ -42,55 +48,46 @@ export const GRADIENT_PRESETS: readonly GradientPreset[] = [
     id: "violet-cream",
     name: "Violet & Cream",
     stops: ["#3a1c71", "#f4d6a0"],
-    zero: "#181818",
   },
   {
     id: "albers",
     name: "Albers",
     stops: ["#2e3d52", "#d4a843"],
-    zero: "#181a1c",
   },
   {
     id: "deep-sea",
     name: "Deep Sea",
     stops: ["#0b3a47", "#bff0e6"],
-    zero: "#161a1c",
   },
   {
     id: "ember",
     name: "Ember",
     stops: ["#5a2610", "#ffb43a"],
-    zero: "#1a1615",
   },
   {
     id: "mono",
     name: "Mono",
     stops: ["#333333", "#f5f5f5"],
-    zero: "#171717",
   },
   {
     id: "sunset",
     name: "Sunset",
     stops: ["#1c1450", "#b3267f", "#f2742c", "#fff1a6"], // indigo, magenta, orange, pale yellow
-    zero: "#171717",
   },
   {
     id: "spectrum",
     name: "Spectrum",
     stops: ["#1c2fa0", "#1ba8d6", "#4fd05a", "#f4ec55"], // blue, cyan, green, yellow
-    zero: "#171717",
   },
   {
     id: "bauhaus",
     name: "Bauhaus",
     stops: ["#101b45", "#1f4fb5", "#d8352a", "#f6c915"], // navy, blue, red, yellow
-    zero: "#171717",
   },
   {
     id: "pastel",
     name: "Pastel",
     stops: ["#2a1a52", "#e98dbd", "#ffc9a6", "#c4f5dd"], // dark violet, pink, peach, mint
-    zero: "#171717",
   },
 ];
 

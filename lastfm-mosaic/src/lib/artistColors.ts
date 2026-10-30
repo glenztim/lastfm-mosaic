@@ -1,5 +1,6 @@
-import { COLOR_PAGE, extendPalette, oklchToHex, parseHex } from "./color";
+import { extendPalette, parseHex } from "./color";
 import type { OutsidePool } from "./settings";
+import { guardLightness, type CardLook } from "./theme";
 import type { ArtistCount } from "./types";
 
 /** Artists by plays descending over the loaded range: rank = index. */
@@ -15,15 +16,15 @@ export function makeRanking(ranked: readonly ArtistCount[]): ArtistRanking {
   };
 }
 
-/** Two neutral greys (OKLCH L 0.42 and 0.52, C 0) for artists beyond the colored top; alternated by rank. */
-export const OTHER_GREYS = [oklchToHex(0.42, 0, 0), oklchToHex(0.52, 0, 0)] as const;
-
 /**
  * Colors of artists by rank. The pool is the top `poolCount` ranks: they get palette colors.
- * Artists beyond it are drawn in alternating greys, or not drawn at all (`skipOutside`).
+ * Artists beyond it are drawn in alternating greys (derived from the card inside and its ink), or
+ * not drawn at all (`skipOutside`).
  */
 export interface ArtistColoring {
   ranking: ArtistRanking;
+  /** The colors derived from the card inside: zero color, greys, hollow border, lightness. */
+  look: CardLook;
   /** Size of the pool: min(pool, number of artists). "All" makes it the whole ranking. */
   poolCount: number;
   /** Artists outside the pool are left out of the rings (never true when the pool is everyone). */
@@ -38,24 +39,28 @@ export interface ArtistColoring {
 
 /**
  * Builds the coloring for a ranking. `palette` is the (tuned) base palette; it is extended with
- * variants (`extendPalette`) to cover every pool rank. `pool` may be Infinity.
+ * variants (`extendPalette`) to cover every pool rank, and every color then gets the contrast
+ * guard against the inside (`guardLightness`), before the neighbor nudge of `ringColors`.
+ * `pool` may be Infinity.
  */
 export function makeColoring(
   ranking: ArtistRanking,
   palette: readonly string[],
   pool: number,
   outside: OutsidePool,
+  look: CardLook,
 ): ArtistColoring {
   const poolCount = Math.min(pool, ranking.names.length);
   const skipOutside = outside === "skip" && poolCount < ranking.names.length;
-  const colors = extendPalette(palette, poolCount);
+  const colors = extendPalette(palette, poolCount).map((c) => guardLightness(c, look.insideL));
   const rankOf = (artist: string) => ranking.rank.get(artist) ?? ranking.names.length;
   return {
     ranking,
+    look,
     poolCount,
     skipOutside,
     rankOf,
-    colorOfRank: (rank) => (rank < poolCount ? colors[rank] : OTHER_GREYS[rank % 2]),
+    colorOfRank: (rank) => (rank < poolCount ? colors[rank] : look.greys[rank % 2]),
     isDrawn: (artist) => !skipOutside || rankOf(artist) < poolCount,
   };
 }
@@ -98,8 +103,9 @@ export function ringColors(artists: readonly string[], coloring: ArtistColoring)
   return colors;
 }
 
-/** Mixes a `#rrggbb` color toward the page background; `amount` 0 = unchanged, 1 = background. */
-export function dimColor(hex: string, amount: number): string {
-  const rgb = parseHex(hex).map((v, i) => Math.round(v + (COLOR_PAGE[i] - v) * amount));
+/** Mixes a `#rrggbb` color toward `bg` (the card inside); `amount` 0 = unchanged, 1 = `bg`. */
+export function dimColor(hex: string, amount: number, bg: string): string {
+  const target = parseHex(bg);
+  const rgb = parseHex(hex).map((v, i) => Math.round(v + (target[i] - v) * amount));
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
 }

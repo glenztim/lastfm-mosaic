@@ -10,7 +10,7 @@ import {
   gradientPalette,
   gradientPresetById,
   paletteById,
-  type ActiveGradient,
+  type TunedGradient,
 } from "@/lib/colorPresets";
 
 const GRADIENT_IDS = GRADIENT_PRESETS.map((g) => g.id);
@@ -18,8 +18,8 @@ const PALETTE_IDS = ARTIST_PALETTES.map((p) => p.id);
 
 /**
  * The two independent color choices and their tune sliders. Slider values are stored per preset
- * (each preset starts neutral), all persisted. The tuned results are what the swatches and legends
- * show immediately; the page defers them for the mosaic itself.
+ * (each preset starts neutral), all persisted. The results are tuned but not yet adapted to the
+ * theme (no gradient reversal, no contrast guard: see `src/lib/displayColors.ts`).
  */
 export interface ColorSettings {
   gradientId: string;
@@ -36,8 +36,8 @@ export interface ColorSettings {
   onPaletteTune: (change: Partial<Tune>) => void;
   onPaletteReset: () => void;
 
-  /** The chosen gradient preset after tuning. */
-  gradient: ActiveGradient;
+  /** The chosen gradient preset after tuning (dark to bright). */
+  gradient: TunedGradient;
   /** The chosen palette's base colors after tuning (before rank extension). */
   paletteColors: readonly string[];
   /** The active palette is "Match gradient" (follows the tuned gradient). */
@@ -67,9 +67,9 @@ export function useColorSettings(): ColorSettings {
   );
   const onPaletteReset = useCallback(() => onPaletteTune(NO_TUNE), [onPaletteTune]);
 
-  const gradient = useMemo<ActiveGradient>(() => {
+  const gradient = useMemo<TunedGradient>(() => {
     const preset = gradientPresetById(gradientId);
-    return { stops: tuneGradient(preset.stops, gradientTune), zero: preset.zero };
+    return { stops: tuneGradient(preset.stops, gradientTune) };
   }, [gradientId, gradientTune]);
 
   // "Match gradient" follows the tuned gradient; other palettes ignore gradient changes entirely.

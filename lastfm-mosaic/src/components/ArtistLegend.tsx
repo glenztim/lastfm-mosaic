@@ -1,7 +1,6 @@
 "use client";
 
 import { useColors } from "@/components/ColorsContext";
-import { OTHER_GREYS } from "@/lib/artistColors";
 import { LEGEND_ARTISTS } from "@/lib/settings";
 
 function Chip({ color, name }: { color: string; name: string }) {
@@ -33,7 +32,7 @@ export function ArtistLegend() {
         {shown.map((name, i) => (
           <Chip key={name} color={legend.artistColors[i]} name={name} />
         ))}
-        {hasGrey && <Chip color={OTHER_GREYS[0]} name="Other artists" />}
+        {hasGrey && <Chip color={coloring.look.greys[0]} name="Other artists" />}
       </ul>
     </div>
   );
